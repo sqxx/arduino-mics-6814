@@ -1,10 +1,10 @@
 #include "MICS6814.h"
 
-MICS6814::MICS6814(int CO, int NO2, int NH3)
+MICS6814::MICS6814(int pinCO, int pinNO2, int pinNH3)
 {
-	_pinCO  = CO;
-	_pinNO2 = NO2;
-	_pinNH3 = NH3;
+	_pinCO  = pinCO;
+	_pinNO2 = pinNO2;
+	_pinNH3 = pinNH3;
 }
 
 /**

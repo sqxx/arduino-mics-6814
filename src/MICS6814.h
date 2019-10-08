@@ -20,7 +20,7 @@ typedef enum
 class MICS6814
 {
 public:
-	MICS6814(int CO, int NO2, int NH3);
+	MICS6814(int pinCO, int pinNO2, int pinNH3);
 
 	void calibrate();
 	void loadCalibrationData(
