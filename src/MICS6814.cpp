@@ -7,62 +7,68 @@ MICS6814::MICS6814(int CO, int NO2, int NH3)
 	_pinNH3 = NH3;
 }
 
+/**
+ * Калибрует MICS-6814 перед использованием
+ *
+ * Алгоритм работы:
+ *
+ * Непрерывно измеряет сопротивление,
+ *   с сохранением последних N измерений в буфере.
+ * Вычисляет плавающее среднее за последние секунды.
+ * Если текущее измерение близко к среднему,
+ *   то считаем, что каллибровка прошла успешно.
+ */
 void MICS6814::calibrate()
 {
-	// Continuously measure the resistance,
-	// storing the last N measurements in a circular buffer.
-	// Calculate the floating average of the last seconds.
-	// If the current measurement is close to the average stop.
-
-	// Seconds to keep stable for successful calibration
-	// (Keeps smaller than 64 to prevent overflows)
+	// Кол-во секунд, которые должны пройти прежде,
+	//   чем мы будем считать, что каллибровка завершена
+	// (Меньше 64 секунд, чтобы избежать переполнения)
 	uint8_t seconds = 10;
 
-	// Allowed delta for the average from the current value
+	// Допустимое отклонение для среднего от текущего значения
 	uint8_t delta = 2;
 
-	// Circular buffer for the measurements
+	// Буферы измерений
 	uint16_t bufferNH3[seconds];
-	uint16_t bufferRED[seconds];
-	uint16_t bufferOX[seconds];
+	uint16_t bufferCO[seconds];
+	uint16_t bufferNO2[seconds];
 
-	// Pointers for the next element in the buffer
+	// Указатели для следующего элемента в буфере
 	uint8_t pntrNH3 = 0;
-	uint8_t pntrRED = 0;
-	uint8_t pntrOX = 0;
+	uint8_t pntrCO = 0;
+	uint8_t pntrNO2 = 0;
 
-	// Current floating sum in the buffer
+	// Текущая плавающая сумма в буфере
 	uint16_t fltSumNH3 = 0;
-	uint16_t fltSumRED = 0;
-	uint16_t fltSumOX = 0;
+	uint16_t fltSumCO = 0;
+	uint16_t fltSumNO2 = 0;
 
-	// Current measurements;
+	// Текущее измерение
 	uint16_t curNH3;
-	uint16_t curRED;
-	uint16_t curOX;
+	uint16_t curCO;
+	uint16_t curNO2;
 
-	// Flag to see if the channels are stable
-	bool NH3stable = false;
-	bool REDstable = false;
-	bool OXstable = false;
+	// Флаг стабильности показаний
+	bool isStableNH3 = false;
+	bool isStableCO  = false;
+	bool isStableNO2 = false;
 
-	// Initialize buffer
+	// Забиваем буфер нулями
 	for (int i = 0; i < seconds; ++i)
 	{
 		bufferNH3[i] = 0;
-		bufferRED[i] = 0;
-		bufferOX[i] = 0;
+		bufferCO[i]  = 0;
+		bufferNO2[i] = 0;
 	}
 
+	// Калибруем
 	do
 	{
 		delay(1000);
 
-		// Read new resistances
 		unsigned long rs = 0;
 
 		delay(50);
-
 		for (int i = 0; i < 3; i++)
 		{
 			delay(1);
@@ -73,51 +79,49 @@ void MICS6814::calibrate()
 		rs = 0;
 
 		delay(50);
-
 		for (int i = 0; i < 3; i++)
 		{
 			delay(1);
 			rs += analogRead(_pinCO);
 		}
 
-		curRED = rs / 3;
+		curCO = rs / 3;
 		rs = 0;
 
 		delay(50);
-
 		for (int i = 0; i < 3; i++)
 		{
 			delay(1);
 			rs += analogRead(_pinNO2);
 		}
 
-		curOX = rs / 3;
+		curNO2 = rs / 3;
 
-		// Update floating sum by subtracting value
-		// about to be overwritten and adding the new value.
+		// Обновите плавающую сумму, вычитая значение, 
+		//   которое будет перезаписано, и добавив новое значение.
 		fltSumNH3 = fltSumNH3 + curNH3 - bufferNH3[pntrNH3];
-		fltSumRED = fltSumRED + curRED - bufferRED[pntrRED];
-		fltSumOX = fltSumOX + curOX - bufferOX[pntrOX];
+		fltSumCO  = fltSumCO  + curCO  - bufferCO[pntrCO];
+		fltSumNO2 = fltSumNO2 + curNO2 - bufferNO2[pntrNO2];
 
-		// Store new measurement in buffer
+		// Сохраняем d буфере новые значения
 		bufferNH3[pntrNH3] = curNH3;
-		bufferRED[pntrRED] = curRED;
-		bufferOX[pntrOX] = curOX;
+		bufferCO[pntrCO]   = curCO;
+		bufferNO2[pntrNO2] = curNO2; 
 
-		// Determine new state of flags
-		NH3stable = abs(fltSumNH3 / seconds - curNH3) < delta;
-		REDstable = abs(fltSumRED / seconds - curRED) < delta;
-		OXstable = abs(fltSumOX / seconds - curOX) < delta;
+		// Определение состояний флагов
+		isStableNH3 = abs(fltSumNH3 / seconds - curNH3) < delta;
+		isStableCO  = abs(fltSumCO  / seconds - curCO)  < delta;
+		isStableNO2 = abs(fltSumNO2 / seconds - curNO2) < delta;
 
-		// Advance buffer pointer
+		// Указатель на буфер
 		pntrNH3 = (pntrNH3 + 1) % seconds;
-		pntrRED = (pntrRED + 1) % seconds;
-		pntrOX = (pntrOX + 1) % seconds;
-	} while (!NH3stable || !REDstable || !OXstable);
+		pntrCO  = (pntrCO  + 1) % seconds;
+		pntrNO2 = (pntrNO2 + 1) % seconds;
+	} while (!isStableNH3 || !isStableCO || !isStableNO2);
 
 	_baseNH3 = fltSumNH3 / seconds;
-	_baseCO = fltSumRED / seconds;
-	_baseNO2 = fltSumOX / seconds;
+	_baseCO  = fltSumCO  / seconds;
+	_baseNO2 = fltSumNO2 / seconds;
 }
 
 void MICS6814::loadCalibrationData(
@@ -130,6 +134,15 @@ void MICS6814::loadCalibrationData(
 	_baseNO2 = baseNO2;
 }
 
+/**
+ * Измеряет концентрацию газа в промилле для указанного газа.
+ *
+ * @param gas
+ * Газ для расчета концентрации.
+ *
+ * @return
+ * Текущая концентрация газа в частях на миллион (ppm).
+ */
 float MICS6814::measure(gas_t gas)
 {
 	float ratio;
@@ -154,6 +167,16 @@ float MICS6814::measure(gas_t gas)
 	return isnan(c) ? -1 : c;
 }
 
+/**
+ * Запрашивает текущее сопротивление для данного канала от датчика. 
+ * Значение - это значение АЦП в диапазоне от 0 до 1024.
+ * 
+ * @param channel
+ * Канал для считывания базового сопротивления.
+ *
+ * @return
+ * Беззнаковое 16-битное базовое сопротивление выбранного канала.
+ */
 uint16_t MICS6814::getResistance(channel_t channel) const
 {
 	unsigned long rs = 0;
@@ -202,6 +225,15 @@ uint16_t MICS6814::getBaseResistance(channel_t channel) const
 	return 0;
 }
 
+/**
+ * Вычисляет коэффициент текущего сопротивления для данного канала.
+ * 
+ * @param channel
+ * Канал для запроса значений сопротивления.
+ *
+ * @return
+ * Коэффициент сопротивления с плавающей запятой для данного датчика.
+ */
 float MICS6814::getCurrentRatio(channel_t channel) const
 {
 	float baseResistance = (float)getBaseResistance(channel);
