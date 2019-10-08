@@ -1,5 +1,5 @@
-#ifndef MICS_6814_H
-#define MICS_6814_H
+#ifndef MICS6814_H
+#define MICS6814_H
 
 #include "Arduino.h"
 
@@ -17,10 +17,10 @@ typedef enum
   NH3
 } gas_t;
 
-class MICS_6814
+class MICS6814
 {
 public:
-    MICS_6814(int CO, int NO2, int NH3);
+    MICS6814(int CO, int NO2, int NH3);
 
     void calibrate();
     void loadCalibrationData(

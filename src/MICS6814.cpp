@@ -1,12 +1,12 @@
 #include "MICS6814.h"
 
-MICS_6814::MICS_6814(int CO, int NO2, int NH3) {
+MICS6814::MICS6814(int CO, int NO2, int NH3) {
     _pinCO  = CO;
     _pinNO2 = NO2;
     _pinNH3 = NH3;
 }
 
-void MICS_6814::calibrate() {
+void MICS6814::calibrate() {
     // Continuously measure the resistance,
     // storing the last N measurements in a circular buffer.
     // Calculate the floating average of the last seconds.
@@ -119,7 +119,7 @@ void MICS_6814::calibrate() {
     OXbaseR = fltSumOX / seconds;
 }
 
-void MICS_6814::loadCalibrationData(
+void MICS6814::loadCalibrationData(
     uint16_t base_NH3,
     uint16_t base_RED,
     uint16_t base_OX) {
@@ -128,7 +128,7 @@ void MICS_6814::loadCalibrationData(
     OXbaseR = base_OX;
 }
 
-float MICS_6814::measure(gas_t gas)
+float MICS6814::measure(gas_t gas)
 {
   float ratio;
   float c = 0;
@@ -152,7 +152,7 @@ float MICS_6814::measure(gas_t gas)
   return isnan(c) ? -1 : c;
 }
 
-uint16_t MICS_6814::getResistance(channel_t channel) const {
+uint16_t MICS6814::getResistance(channel_t channel) const {
     unsigned long rs = 0;
     int counter = 0;
 
@@ -187,7 +187,7 @@ uint16_t MICS_6814::getResistance(channel_t channel) const {
   return 0;
 }
 
-uint16_t MICS_6814::getBaseResistance(channel_t channel) const {
+uint16_t MICS6814::getBaseResistance(channel_t channel) const {
     switch (channel)
     {
     case CH_NH3:
@@ -201,7 +201,7 @@ uint16_t MICS_6814::getBaseResistance(channel_t channel) const {
     return 0;
 }
 
-float MICS_6814::getCurrentRatio(channel_t channel) const
+float MICS6814::getCurrentRatio(channel_t channel) const
 {
   float baseResistance = (float)getBaseResistance(channel);
   float resistance = (float)getResistance(channel);
